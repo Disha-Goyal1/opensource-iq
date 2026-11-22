@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenSource IQ</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2312222B'/%3E%3Ccircle cx='32' cy='22' r='6' fill='%232447B8'/%3E%3Ccircle cx='20' cy='42' r='5' fill='%232E7D5A'/%3E%3Ccircle cx='44' cy='42' r='5' fill='%23C4492F'/%3E%3C/svg%3E">
+<style>
+:root{--paper:#EDF1EF;--ink:#12222B;--muted:#53656E;--line:#C7D2CE;--card:#F7F9F8;--cobalt:#2447B8;--g:#2E7D5A;--a:#C98A12;--o:#C4492F;--r:#8E1F3A}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 "Segoe UI",system-ui,sans-serif}
+.wrap{width:min(1120px,100% - 2rem);margin:auto}header{border-bottom:1px solid var(--line);padding:.9rem 0}
+header .wrap{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap}
+h1{font-size:1.2rem;margin:0}h2{font-size:1.1rem;margin:0 0 .7rem}.muted{color:var(--muted)}
+form{display:flex;gap:.5rem;flex:1;max-width:560px}input{flex:1;min-width:0;font:inherit;padding:.6rem .8rem;border:1.5px solid var(--ink);border-radius:8px;background:#fff}
+button{font:inherit;font-weight:600;padding:.6rem 1.1rem;border:0;border-radius:8px;background:var(--cobalt);color:#fff;cursor:pointer}button:disabled{opacity:.6}
+button.ghost{background:none;color:var(--cobalt);border:1px solid var(--line);font-weight:500;padding:.3rem .7rem}
+:focus-visible{outline:3px solid var(--cobalt);outline-offset:2px}
+main{padding:1.5rem 0 3rem}.msg{padding:2.5rem 0;color:var(--muted)}.err{color:var(--o);font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:1rem}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:1.1rem 1.2rem;overflow:auto}
+.c4{grid-column:span 4}.c5{grid-column:span 5}.c7{grid-column:span 7}.c8{grid-column:span 8}.c12{grid-column:span 12}
+.big{font-size:3.4rem;font-weight:700;line-height:1}.pill{display:inline-block;padding:.1rem .6rem;border-radius:99px;color:#fff;font-size:.85rem;font-weight:600;margin-left:.4rem}
+.row{margin:.7rem 0}.row b{font-weight:600}.track{height:10px;background:#E1E8E5;border-radius:9px;overflow:hidden;margin-top:.25rem}.fill{height:100%;background:var(--cobalt)}
+.src{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1rem;font-size:.82rem}.src span{border:1px solid var(--line);border-radius:99px;padding:.1rem .6rem;background:var(--card)}.src .bad{border-color:var(--o);color:var(--o)}
+table{width:100%;border-collapse:collapse;font-size:.92rem}th,td{text-align:left;padding:.45rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}th{font-weight:600}
+svg{width:100%;height:auto;display:block}.lab{font:12px ui-monospace,Menlo,monospace;fill:var(--ink)}.edge{stroke:var(--line);stroke-width:1.5;fill:none}
+.warn{background:#FFF3D6;border:1px solid #E6C768;border-radius:10px;padding:.6rem 1rem;margin-bottom:1rem;font-size:.92rem}
+@media(max-width:860px){.c4,.c5,.c7,.c8{grid-column:span 12}}
+</style></head><body>
+<header><div class="wrap"><h1>OpenSource IQ</h1>
+<form id="f"><input id="q" placeholder="npm package, e.g. express" aria-label="npm package name" required autocapitalize="off" spellcheck="false"><button id="go">Analyze</button></form></div></header>
+<main class="wrap"><div id="out" class="msg">Enter an npm package name to collect its data, clean it, and score its risk.</div></main>
+<script>
+const $=s=>document.querySelector(s),esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const col=t=>t<25?"var(--g)":t<50?"var(--a)":t<75?"var(--o)":"var(--r)",lab=t=>t<25?"Low":t<50?"Moderate":t<75?"High":"Critical";
+let last=null;
+$("#f").addEventListener("submit",async e=>{e.preventDefault();const q=$("#q").value.trim(),out=$("#out"),b=$("#go");
+ b.disabled=true;out.className="msg";out.textContent="Collecting from npm, OSV, EPSS, CISA KEV and GitHub, then cleaning and scoring… this can take a few seconds.";
+ try{const r=await fetch("/api/analyze?pkg="+encodeURIComponent(q)),d=await r.json();if(!r.ok)throw new Error(d.error||"Request failed");last=d;render(d)}
+ catch(x){out.className="msg err";out.textContent=x.message}finally{b.disabled=false}});
+function graph(d){const by={};d.nodes.forEach(n=>(by[n.depth]=by[n.depth]||[]).push(n));const X=[20,260,500],G=26,pos={};let H=40;
+ Object.entries(by).forEach(([k,a])=>{a.forEach((n,i)=>pos[n.name]={x:X[k],y:24+i*G});H=Math.max(H,24+a.length*G)});
+ let e="",n="";d.nodes.forEach(p=>p.deps.forEach(c=>{if(pos[c]&&pos[p.name])e+=`<path class="edge" d="M${pos[p.name].x},${pos[p.name].y} C${pos[p.name].x+110},${pos[p.name].y} ${pos[c].x-110},${pos[c].y} ${pos[c].x},${pos[c].y}"/>`}));
+ d.nodes.forEach(p=>{const q=pos[p.name];n+=`<circle cx="${q.x}" cy="${q.y}" r="8" fill="${col(p.total)}"><title>${esc(p.name)}: ${p.total}</title></circle><text class="lab" x="${q.x+13}" y="${q.y+4}">${esc(p.name.length>26?p.name.slice(0,25)+"…":p.name)} ${p.total}</text>`});
+ return `<svg viewBox="0 0 700 ${H}" role="img" aria-label="Dependency graph coloured by risk score">${e}${n}</svg>`}
+function render(d){const root=d.nodes[0],bad=Object.entries(d.sources).filter(([,v])=>!v.startsWith("ok")),a=d.audit;
+ const bars=[["Vulnerabilities",root.vulnPts,40],["Maintenance",root.maintPts,35],["Propagated",root.propPts,25]];
+ $("#out").className="";$("#out").innerHTML=`
+ <div class="src">${Object.entries(d.sources).map(([k,v])=>`<span class="${v.startsWith("ok")||v.startsWith("skipped")?"":"bad"}" title="${esc(v)}">${esc(k)}: ${esc(v.split(" (")[0])}</span>`).join("")}</div>
+ ${d.sources.OSV&&!d.sources.OSV.startsWith("ok")?`<p class="warn">The vulnerability database (OSV) could not be reached, so vulnerability and propagated scores are incomplete. Results show maintenance signals only.</p>`:""}
+ <div class="grid">
+ <div class="card c4"><h2>${esc(d.name)} <span class="muted">${esc(root.version)}</span></h2><div><span class="big">${root.total}</span> / 100<span class="pill" style="background:${col(root.total)}">${lab(root.total)}</span></div>
+  <p class="muted" style="margin:.8rem 0 0">Chance of becoming high-risk within a year (prototype predictor): <b style="color:var(--ink)">${Math.round(d.predicted*100)}%</b></p>
+  ${bars.map(([n,v,m])=>`<div class="row"><b>${n}</b> <span class="muted">${v} / ${m}</span><div class="track"><div class="fill" style="width:${v/m*100}%"></div></div></div>`).join("")}</div>
+ <div class="card c8"><h2>Why this score</h2><table><tbody>${d.explain.map(x=>`<tr><th>${esc(x.factor)}</th><td>${x.points?"+"+x.points:""}</td><td>${esc(x.detail)}</td></tr>`).join("")}</tbody></table>
+  ${d.github?`<p class="muted">GitHub ${esc(d.github.repo)}: ${d.github.stars.toLocaleString()} stars, ${d.github.openIssues} open issues, last push ${esc((d.github.pushedAt||"").slice(0,10))}${d.github.archived?", archived":""}.</p>`:""}</div>
+ <div class="card c7"><h2>Dependency graph <span class="muted">(${d.nodes.length} packages, risk score shown)</span></h2>${graph(d)}</div>
+ <div class="card c5"><h2>Data quality audit</h2><table><thead><tr><th>Check</th><th>Before</th><th>After</th></tr></thead><tbody>
+  <tr><td>Advisory records</td><td>${a.rawRecords}</td><td>${a.uniqueRecords} unique</td></tr>
+  <tr><td>Non-standard severity labels</td><td>${a.nonStandardSeverity}</td><td>0 standardised</td></tr>
+  <tr><td>Records with no severity</td><td>${a.missingSeverity}</td><td>${a.missingSeverity} flagged, scored as medium</td></tr>
+  <tr><td>Packages with no repo link</td><td>${a.noRepo}</td><td>${a.noRepo} flagged</td></tr></tbody></table>
+  <p class="muted" style="font-size:.85rem">Duplicates are merged across GHSA and CVE identifiers.</p></div>
+ <div class="card c12"><h2>Advisories on ${esc(d.name)} ${esc(root.version)}</h2>${d.vulns.length?`<table><thead><tr><th>ID</th><th>Severity</th><th>Exploit signal</th><th>Summary</th></tr></thead><tbody>${d.vulns.map(v=>`<tr><td><a href="https://osv.dev/vulnerability/${encodeURIComponent(v.id)}" target="_blank" rel="noopener">${esc(v.cve||v.id)}</a></td><td>${esc(v.sev)}</td><td>${v.kev?"In CISA KEV":v.epss!=null?"EPSS "+(v.epss*100).toFixed(1)+"%":"none"}</td><td>${esc(v.summary)}</td></tr>`).join("")}</tbody></table>`:`<p class="muted">None found.</p>`}
+  <p><button class="ghost" id="ex">Download analysis as JSON</button></p></div></div>`;
+ $("#ex").onclick=()=>{const u=URL.createObjectURL(new Blob([JSON.stringify(last,null,2)],{type:"application/json"})),a=document.createElement("a");a.href=u;a.download=d.name.replace("/","_")+"-analysis.json";a.click();URL.revokeObjectURL(u)}}
+</script></body></html>
